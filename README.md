@@ -78,7 +78,7 @@ will handle the creation of tables for you.
 If you're using MongoDB, you should make sure to set the following
 environment variables when launching your database container:
 
-  * `MONGO_INITDB_ROOT_USERNAME` and `MONGO_INITDB_ROOT_USERNAME` -
+  * `MONGO_INITDB_ROOT_USERNAME` and `MONGO_INITDB_ROOT_PASSWORD` -
     These are used to create the MongoDB `root` user.
 
   * `MONGO_INITDB_DATABASE` - This specifies the name of a MongoDB
