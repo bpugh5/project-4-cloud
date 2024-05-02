@@ -6,7 +6,7 @@ const api = require('./api');
 const mysqlPool = require('./lib/mysqlPool')
 
 const app = express();
-const port = process.env.PORT || 3306;
+const port = process.env.PORT || 8000;
 
 /*
  * Morgan is a popular logger.
