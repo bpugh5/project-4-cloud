@@ -5,28 +5,30 @@ const businesses = require('../data/businesses');
 const { reviews } = require('./reviews');
 const { photos } = require('./photos');
 
-const mysqlPool = require('../lib/mysqlPool')
+const database = require('../lib/mysqlPool');
 
 async function init() {
+  const mysqlPool = database.connect();
   await mysqlPool.query(
-      `CREATE TABLE IF NOT EXISTS businesses (
-          id MEDIUMINT NOT NULL AUTO_INCREMENT,
-          ownerid INT NOT NULL,
-          name varchar(30) NOT NULL,
-          address varchar(30) NOT NULL,
-          city varchar(30) NOT NULL,
-          state varchar(30) NOT NULL,
-          zip varchar(30) NOT NULL,
-          phone varchar(30) NOT NULL,
-          category varchar(30) NOT NULL,
-          subcategory varchar(30),
-          website varchar(30),
-          PRIMARY KEY (id),
-          FOREIGN KEY (ownerid) REFERENCES users(userid)
-          INDEX idx_value (value)
-      )`);
+    `CREATE TABLE IF NOT EXISTS businesses (
+      id MEDIUMINT NOT NULL AUTO_INCREMENT,
+      ownerid INT NOT NULL,
+      name varchar(255) NOT NULL,
+      address varchar(255) NOT NULL,
+      city varchar(255) NOT NULL,
+      state varchar(2) NOT NULL,
+      zip varchar(5) NOT NULL,
+      phone varchar(30) NOT NULL,
+      category varchar(255) NOT NULL,
+      subcategory varchar(255),
+      website varchar(255),
+      PRIMARY KEY (id),
+      INDEX idx_ownerid (ownerid)
+    );`
+  );
 }
 
+// ownerid MEDIUMINT NOT NULL,
 init();
 
 exports.router = router;
@@ -126,6 +128,7 @@ router.post('/', async function (req, res, next) {
 
   async function insertNewBusiness(business) {
     const validatedBusiness = extractValidFields(business, businessSchema);
+    console.log(business);
 
     const [ result ] = await mysqlPool.query(
       "INSERT INTO businesses SET ?", validatedBusiness
