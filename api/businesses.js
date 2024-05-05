@@ -6,9 +6,10 @@ const { reviews } = require('./reviews');
 const { photos } = require('./photos');
 
 const database = require('../lib/mysqlPool');
+const mysqlPool = database.connect();
 
 async function init() {
-  const mysqlPool = database.connect();
+  console.log(mysqlPool);
   await mysqlPool.query(
     `CREATE TABLE IF NOT EXISTS businesses (
       id MEDIUMINT NOT NULL AUTO_INCREMENT,
@@ -60,10 +61,18 @@ router.get('/', async function (req, res) {
    * Attempt to call getBusinessesPage and send response data back.
    * If it fails, send status code 500.
    */
+
+  let page = parseInt(req.query.page) || 1;
+  const numPerPage = 10;
+  const lastPage = Math.ceil(businesses.length / numPerPage);
+  page = page > lastPage ? lastPage : page;
+  page = page < 1 ? 1 : page;
+
   try {
     const businessesPage = await getBusinessesPage(page);
     res.status(200).send(businessesPage);
   } catch (err) {
+    console.log(err)
     res.status(500).json({
       error: "Error fetching businesses list. Try again later."
     });
@@ -73,6 +82,7 @@ router.get('/', async function (req, res) {
    * Get the number of businesses in the table
    */
   async function getBusinessesCount() {
+    console.log("before getbusinesscountquery")
     const [ results ] = await mysqlPool.query(
       "SELECT COUNT(*) AS count FROM businesses"
     );
@@ -84,6 +94,7 @@ router.get('/', async function (req, res) {
    * Get a paginated set of businesses from the table
    */
   async function getBusinessesPage(page) {
+    console.log("before getbusinesscountfunction")
     const count = await getBusinessesCount();
 
     const pageSize = 10;
@@ -92,6 +103,7 @@ router.get('/', async function (req, res) {
     page = page < 1 ? 1 : page;
     const offset = (page - 1) * pageSize;
 
+    console.log("before get query")
     const [ results ] = await mysqlPool.query(
       'SELECT * FROM businesses ORDER BY id LIMIT ?,?',
       [offset, pageSize]
@@ -198,7 +210,7 @@ router.put('/:businessid', async function (req, res, next) {
   async function updateBusinessById(businessId, business) {
     const validatedBusiness = extractValidFields(business, businessSchema);
     const [ result ] = mysqlPool.query(
-      "UPDATE lodgings SET ? WHERE id = ?",
+      "UPDATE businesses SET ? WHERE id = ?",
       [ validatedBusiness, businessId ]
     );
 
