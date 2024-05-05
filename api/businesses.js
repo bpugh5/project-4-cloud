@@ -9,7 +9,7 @@ const database = require('../lib/mysqlPool');
 const mysqlPool = database.connect();
 
 async function init() {
-  console.log(mysqlPool);
+  // console.log(mysqlPool);
   await mysqlPool.query(
     `CREATE TABLE IF NOT EXISTS businesses (
       id MEDIUMINT NOT NULL AUTO_INCREMENT,
@@ -17,12 +17,13 @@ async function init() {
       name varchar(255) NOT NULL,
       address varchar(255) NOT NULL,
       city varchar(255) NOT NULL,
-      state varchar(2) NOT NULL,
-      zip varchar(5) NOT NULL,
-      phone varchar(30) NOT NULL,
+      state varchar(255) NOT NULL,
+      zip varchar(255) NOT NULL,
+      phone varchar(255) NOT NULL,
       category varchar(255) NOT NULL,
-      subcategory varchar(255),
+      subcategory varchar(255) NOT NULL,
       website varchar(255),
+      email varchar(255),
       PRIMARY KEY (id),
       INDEX idx_ownerid (ownerid)
     );`
@@ -82,7 +83,6 @@ router.get('/', async function (req, res) {
    * Get the number of businesses in the table
    */
   async function getBusinessesCount() {
-    console.log("before getbusinesscountquery")
     const [ results ] = await mysqlPool.query(
       "SELECT COUNT(*) AS count FROM businesses"
     );
@@ -94,7 +94,6 @@ router.get('/', async function (req, res) {
    * Get a paginated set of businesses from the table
    */
   async function getBusinessesPage(page) {
-    console.log("before getbusinesscountfunction")
     const count = await getBusinessesCount();
 
     const pageSize = 10;
@@ -103,7 +102,6 @@ router.get('/', async function (req, res) {
     page = page < 1 ? 1 : page;
     const offset = (page - 1) * pageSize;
 
-    console.log("before get query")
     const [ results ] = await mysqlPool.query(
       'SELECT * FROM businesses ORDER BY id LIMIT ?,?',
       [offset, pageSize]
@@ -161,7 +159,7 @@ router.get('/:businessid', async function (req, res, next) {
     * photos.
     */
   try {
-    const business = getBusinessById(businessid);
+    const business = await getBusinessById(businessid);
     if (business) {
       res.status(200).send(business);
     } else {
@@ -178,6 +176,8 @@ router.get('/:businessid', async function (req, res, next) {
       "SELECT * FROM businesses WHERE id = ?",
       [ businessID ],
     );
+
+    console.log(results);
 
     return results[0];
   }
@@ -209,7 +209,7 @@ router.put('/:businessid', async function (req, res, next) {
 
   async function updateBusinessById(businessId, business) {
     const validatedBusiness = extractValidFields(business, businessSchema);
-    const [ result ] = mysqlPool.query(
+    const [ result ] = await mysqlPool.query(
       "UPDATE businesses SET ? WHERE id = ?",
       [ validatedBusiness, businessId ]
     );
@@ -227,7 +227,7 @@ router.delete('/:businessid', async function (req, res, next) {
     const deleteSuccessful = await deleteBusinessById(businessid);
     
     if (deleteSuccessful) {
-      res.status(204).end();
+      res.status(204).send();
     } else {
       next();
     }
