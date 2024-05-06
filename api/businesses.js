@@ -1,16 +1,43 @@
 const router = require('express').Router();
 const { validateAgainstSchema, extractValidFields } = require('../lib/validation');
 
-const businesses = require('../data/businesses');
 const { reviews } = require('./reviews');
 const { photos } = require('./photos');
 
-const database = require('../lib/mysqlPool');
-const mysqlPool = database.connect();
+const mysqlPool = require('../lib/mysqlPool');
 
+// Simulate delay in code for database connection
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// Loop until the database is set up
+async function loop() {
+  while (true) {
+    try {
+      // This code was derived from https://github.com/mysqljs/mysql?tab=readme-ov-file#pooling-connections
+      await mysqlPool.getConnection(function(err, connection) {
+        if (err) throw err;
+
+        connection.query('SELECT * FROM businesses', function (error, results, fields) {
+          // When done with the connection, release it.
+          connection.release();
+      
+          // Handle error after the release.
+          if (error) throw error;
+        });
+      });
+      break;
+    } catch {
+      await sleep(2000)
+    }
+  }
+}
+
+// Builds table after awaiting database connection
 async function init() {
-  // console.log(mysqlPool);
-  await mysqlPool.query(
+  await loop();
+  mysqlPool.query(
     `CREATE TABLE IF NOT EXISTS businesses (
       id MEDIUMINT NOT NULL AUTO_INCREMENT,
       ownerid INT NOT NULL,
@@ -30,11 +57,9 @@ async function init() {
   );
 }
 
-// ownerid MEDIUMINT NOT NULL,
 init();
 
 exports.router = router;
-exports.businesses = businesses;
 
 /*
  * Schema describing required/optional fields of a business object.
@@ -62,10 +87,10 @@ router.get('/', async function (req, res) {
    * Attempt to call getBusinessesPage and send response data back.
    * If it fails, send status code 500.
    */
-
   let page = parseInt(req.query.page) || 1;
   const numPerPage = 10;
-  const lastPage = Math.ceil(businesses.length / numPerPage);
+  const count = await getBusinessesCount();
+  const lastPage = Math.ceil(count / numPerPage);
   page = page > lastPage ? lastPage : page;
   page = page < 1 ? 1 : page;
 
@@ -73,7 +98,6 @@ router.get('/', async function (req, res) {
     const businessesPage = await getBusinessesPage(page);
     res.status(200).send(businessesPage);
   } catch (err) {
-    console.log(err)
     res.status(500).json({
       error: "Error fetching businesses list. Try again later."
     });
@@ -124,7 +148,7 @@ router.post('/', async function (req, res, next) {
   if (validateAgainstSchema(req.body, businessSchema)) {
     try {
       const id = await insertNewBusiness(req.body);
-      res.status(201).send({ id: id });
+      res.status(201).send({id: id});
     } catch (err) {
       res.status(500).send({
         error: "Error inserting business into DB."
@@ -138,7 +162,6 @@ router.post('/', async function (req, res, next) {
 
   async function insertNewBusiness(business) {
     const validatedBusiness = extractValidFields(business, businessSchema);
-    console.log(business);
 
     const [ result ] = await mysqlPool.query(
       "INSERT INTO businesses SET ?", validatedBusiness
@@ -176,8 +199,6 @@ router.get('/:businessid', async function (req, res, next) {
       "SELECT * FROM businesses WHERE id = ?",
       [ businessID ],
     );
-
-    console.log(results);
 
     return results[0];
   }
